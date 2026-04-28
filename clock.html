@@ -1,0 +1,834 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Serene 3D Clock</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --bg:#071018; --bg-2:#08161b; --glass:rgba(255,255,255,0.04);
+      --accent: #66e5c9; --accent-2:#2ac7a0; --muted:rgba(255,255,255,0.6);
+      --card-shadow: 0 12px 40px rgba(2,8,10,.6);
+      --transition: 350ms cubic-bezier(.22,1,.36,1);
+    }
+    [data-theme='light']{ --bg:#f6fbff; --bg-2:#eef7fb; --glass:rgba(0,0,0,0.04); --accent:#2b7cff; --accent-2:#6bb9ff; --muted:rgba(0,0,0,.6); --card-shadow:0 12px 40px rgba(4,12,24,.06); }
+
+    *{box-sizing:border-box}
+    html,body{height:100%;margin:0;font-family:Inter,system-ui,Arial;background:linear-gradient(180deg,var(--bg),var(--bg-2));color:var(--muted);transition:background var(--transition),color var(--transition)}
+
+    .wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:40px}
+    .panel{width:980px;max-width:96vw;border-radius:18px;padding:28px;background:linear-gradient(180deg,rgba(255,255,255,0.02),transparent);backdrop-filter:blur(8px);box-shadow:var(--card-shadow);position:relative;overflow:hidden}
+
+    header{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
+    .title{display:flex;align-items:center;gap:14px}
+    .logo{width:48px;height:48px;border-radius:12px;background:linear-gradient(135deg,var(--accent),var(--accent-2));display:flex;align-items:center;justify-content:center;font-weight:700;color:#012;box-shadow:0 6px 24px rgba(42,199,160,.12)}
+    h1{font-size:1.35rem;margin:0;color:var(--muted);font-weight:600}
+    .controls{display:flex;gap:12px;align-items:center}
+    .btn{background:var(--glass);border:1px solid rgba(255,255,255,0.03);padding:8px 12px;border-radius:10px;color:var(--muted);cursor:pointer;transition:all var(--transition)}
+    .btn:hover{transform:translateY(-3px)}
+
+    /* stage */
+    .stage{display:grid;grid-template-columns:420px 1fr;gap:24px;align-items:center}
+    #three-container{width:420px;height:420px;border-radius:12px;overflow:hidden;display:flex;align-items:center;justify-content:center}
+    .info{padding:18px 12px}
+    .clock-digital{font-family:Inter,monospace;font-weight:700;font-size:48px;color:var(--muted);line-height:1}
+    .clock-date{margin-top:8px;color:var(--muted);font-size:14px}
+    .small{font-size:13px;color:var(--muted)}
+
+    /* subtle background animation */
+    canvas#bg{position:fixed;inset:0;z-index:0;pointer-events:none}
+
+    /* responsive */
+    @media(max-width:920px){ .stage{grid-template-columns:1fr;grid-auto-rows:auto} #three-container{width:100%;height:320px} }
+  </style>
+</head>
+<body>
+  <canvas id="bg"></canvas>
+  <div class="wrap">
+    <div class="panel" role="main">
+      <header>
+        <div class="title">
+          <div class="logo">⧖</div>
+          <h1>Serene 3D Clock</h1>
+        </div>
+        <div class="controls">
+          <button id="mode-toggle" class="btn" aria-pressed="false" title="Toggle theme">🌞 / 🌙</button>
+          <button id="pause-rotate" class="btn" title="Pause rotation">⏸</button>
+        </div>
+      </header>
+
+      <div class="stage">
+        <div id="three-container"></div>
+        <div class="info">
+          <div id="time" class="clock-digital">00:00:00</div>
+          <div id="date" class="clock-date">Loading date…</div>
+          <div style="height:18px"></div>
+          <div class="small">A calm animated 3D orb reflects time and adds a soft, meditative presence. Use the theme toggle to switch between dark and light modes. The theme is saved locally.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.min.js"></script>
+  <script>
+    // Utilities
+    const $ = id => document.getElementById(id);
+    const ls = { get:(k,d)=>{try{return JSON.parse(localStorage.getItem(k))}catch(e){return d}}, set:(k,v)=>localStorage.setItem(k,JSON.stringify(v)) };
+
+    // Theme
+    const savedTheme = ls.get('sereneClockTheme','dark') || 'dark';
+    document.documentElement.setAttribute('data-theme', savedTheme);
+    const modeToggle = $('mode-toggle');
+    modeToggle.addEventListener('click', ()=>{ const t = document.documentElement.getAttribute('data-theme')==='dark'?'light':'dark'; document.documentElement.setAttribute('data-theme',t); ls.set('sereneClockTheme',t); });
+
+    // Background gentle particles (canvas)
+    (function bgParticles(){
+      const c = document.getElementById('bg'); const ctx = c.getContext('2d'); let W,H; function resize(){W=c.width=innerWidth;H=c.height=innerHeight} resize(); addEventListener('resize',resize);
+      const dots=[]; for(let i=0;i<120;i++){dots.push({x:Math.random()*W,y:Math.random()*H,r:1+Math.random()*2, vx:(Math.random()-0.5)*0.15, vy:(Math.random()-0.5)*0.15})}
+      function frame(){ctx.clearRect(0,0,W,H); const grad=ctx.createLinearGradient(0,0,W,H); if(document.documentElement.getAttribute('data-theme')==='dark'){grad.addColorStop(0,'rgba(30,45,40,0.05)');grad.addColorStop(1,'rgba(10,18,20,0.06)')}else{grad.addColorStop(0,'rgba(250,250,255,0.06)');grad.addColorStop(1,'rgba(230,245,255,0.04)');} ctx.fillStyle=grad; ctx.fillRect(0,0,W,H);
+        for(const d of dots){ d.x+=d.vx; d.y+=d.vy; if(d.x<-10)d.x=W+10; if(d.x>W+10)d.x=-10; if(d.y<-10)d.y=H+10; if(d.y>H+10)d.y=-10; ctx.beginPath(); ctx.arc(d.x,d.y,d.r,0,Math.PI*2); ctx.fillStyle='rgba(255,255,255,0.03)'; ctx.fill(); }
+        requestAnimationFrame(frame);
+      }
+      frame();
+    })();
+
+    // THREE.js scene: peaceful orb
+    (function threeClock(){
+      const container = $('three-container');
+      const scene = new THREE.Scene();
+      const renderer = new THREE.WebGLRenderer({antialias:true,alpha:true});
+      renderer.setPixelRatio(window.devicePixelRatio); renderer.setSize(container.clientWidth, container.clientHeight); container.appendChild(renderer.domElement);
+      const cam = new THREE.PerspectiveCamera(50, container.clientWidth/container.clientHeight, 0.1, 100); cam.position.set(0,0,3);
+
+      // lights
+      const amb = new THREE.AmbientLight(0xffffff, 0.6); scene.add(amb);
+      const p1 = new THREE.PointLight(0x66e5c9, 1.2, 10); p1.position.set(3,2,3); scene.add(p1);
+      const p2 = new THREE.PointLight(0x2b7cff, 0.6, 10); p2.position.set(-3,-2,2); scene.add(p2);
+
+      // orb
+      const sphereGeo = new THREE.SphereGeometry(0.95, 128, 128);
+      const mat = new THREE.MeshStandardMaterial({color:0x66e5c9, roughness:0.35, metalness:0.25, emissive:0x07231a, emissiveIntensity:0.5});
+      const orb = new THREE.Mesh(sphereGeo, mat); scene.add(orb);
+
+      // soft glow layer
+      const glowMat = new THREE.MeshBasicMaterial({color:0x66e5c9, transparent:true, opacity:0.06, blending:THREE.AdditiveBlending});
+      const glow = new THREE.Mesh(new THREE.SphereGeometry(1.08,64,64), glowMat); scene.add(glow);
+
+      // subtle bump/normal map via noise (vertex displacement)
+      // create a low-amplitude vertex wiggle in render loop instead of complex shaders
+
+      let rotate = true;
+      $('pause-rotate').addEventListener('click', ()=>{ rotate = !rotate; $('pause-rotate').textContent = rotate ? '⏸' : '▶'; });
+
+      function onResize(){ renderer.setSize(container.clientWidth, container.clientHeight); cam.aspect = container.clientWidth/container.clientHeight; cam.updateProjectionMatrix(); }
+      window.addEventListener('resize', onResize);
+
+      const clock = new THREE.Clock();
+      function render(){ requestAnimationFrame(render); const t = clock.getElapsedTime(); if(rotate){ orb.rotation.y += 0.0035; orb.rotation.x = Math.sin(t*0.3)*0.04; glow.rotation.copy(orb.rotation); }
+        // small vertex shimmer
+        const pos = sphereGeo.attributes.position; for(let i=0;i<pos.count;i++){ const ox = pos.getX(i), oy = pos.getY(i), oz = pos.getZ(i); const n = 1 + 0.002*Math.sin(i*0.1 + t*2.0); pos.setXYZ(i, ox*n, oy*n, oz*n); } pos.needsUpdate = true;
+        renderer.render(scene, cam);
+      }
+      render();
+
+      // theme sync: adjust material & lights
+      function applyTheme(t){ if(t==='light'){ mat.color.set(0x2b7cff); mat.emissive.set(0x052035); mat.emissiveIntensity=0.18; p1.color.set(0xfff4d6); p2.color.set(0x6bb9ff); amb.intensity=0.9 } else { mat.color.set(0x66e5c9); mat.emissive.set(0x07231a); mat.emissiveIntensity=0.5; p1.color.set(0x66e5c9); p2.color.set(0x2b7cff); amb.intensity=0.6 } }
+      applyTheme(document.documentElement.getAttribute('data-theme'));
+      const observer = new MutationObserver(()=>applyTheme(document.documentElement.getAttribute('data-theme')));
+      observer.observe(document.documentElement, {attributes:true, attributeFilter:['data-theme']});
+    })();
+
+    // digital clock update
+    (function digital(){
+      const TIME = $('time'), DATE = $('date');
+      function pad(n){return String(n).padStart(2,'0')}
+      function tick(){ const now = new Date(); TIME.textContent = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`; DATE.textContent = now.toLocaleDateString(undefined,{weekday:'long', month:'long', day:'numeric'}); }
+      tick(); setInterval(tick, 250);
+    })();
+  </script>
+</body>
+</html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#dff5ec">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Peace Clock</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=JetBrains+Mono:wght@300;400;600&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --ink: #123b2b;
+    --ink-soft: rgba(18,59,43,.72);
+    --muted: rgba(18,59,43,.52);
+    --line: rgba(30,142,105,.18);
+    --glass: rgba(245,255,250,.46);
+    --glass-strong: rgba(255,255,255,.62);
+    --accent: #0e9f6e;
+    --accent-2: #58c7a0;
+    --warm: #df9f8b;
+    --shell: #f5fff9;
+    --shadow: 0 28px 90px rgba(15,80,56,.16);
+  }
+
+  html, body { width: 100%; height: 100%; overflow: hidden; }
+
+  body {
+    min-height: 100vh;
+    font-family: "DM Sans", system-ui, sans-serif;
+    color: var(--ink);
+    background:
+      linear-gradient(180deg, #fffaf6 0%, #edf8f1 50%, #dcefe8 100%);
+    user-select: none;
+  }
+
+  #scene,
+  #scene-fallback {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+  }
+
+  #scene {
+    z-index: 1;
+    display: block;
+  }
+
+  #scene-fallback {
+    z-index: 0;
+    overflow: hidden;
+    background:
+      linear-gradient(160deg, rgba(255,255,255,.85), rgba(199,234,220,.5)),
+      linear-gradient(180deg, #f7fff9, #dbefe7);
+  }
+
+  #scene-fallback::before,
+  #scene-fallback::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: min(86vw, 760px);
+    aspect-ratio: 1;
+    border: 1px solid rgba(26,134,94,.16);
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    animation: breathe-ring 8s ease-in-out infinite;
+  }
+
+  #scene-fallback::after {
+    width: min(62vw, 520px);
+    animation-delay: -3s;
+  }
+
+  @keyframes breathe-ring {
+    0%, 100% { transform: translate(-50%, -50%) scale(.9); opacity: .22; }
+    50% { transform: translate(-50%, -50%) scale(1.04); opacity: .5; }
+  }
+
+  .grain {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 2;
+    opacity: .14;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.28'/%3E%3C/svg%3E");
+    mix-blend-mode: multiply;
+  }
+
+  .shell {
+    position: relative;
+    z-index: 3;
+    min-height: 100vh;
+    display: grid;
+    place-items: center;
+    padding: clamp(18px, 5vw, 56px);
+  }
+
+  .clock-panel {
+    width: min(94vw, 1040px);
+    min-height: min(72vh, 620px);
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 280px;
+    align-items: stretch;
+    border: 1px solid var(--line);
+    border-radius: 28px;
+    background:
+      linear-gradient(135deg, rgba(255,255,255,.72), rgba(255,241,232,.24), rgba(237,252,244,.38));
+    backdrop-filter: blur(22px) saturate(1.1);
+    -webkit-backdrop-filter: blur(22px) saturate(1.1);
+    box-shadow: var(--shadow), inset 0 1px 0 rgba(255,255,255,.72);
+    overflow: hidden;
+  }
+
+  .time-zone {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: clamp(28px, 7vw, 82px);
+    gap: clamp(14px, 2.2vw, 24px);
+  }
+
+  .eyebrow {
+    width: fit-content;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 7px 12px;
+    border-radius: 999px;
+    border: 1px solid rgba(14,159,110,.18);
+    background: rgba(255,255,255,.38);
+    color: var(--muted);
+    font-size: .74rem;
+    font-weight: 700;
+    letter-spacing: .13em;
+    text-transform: uppercase;
+  }
+
+  .pulse-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--accent);
+    background: linear-gradient(135deg, var(--accent), var(--warm));
+    box-shadow: 0 0 0 0 rgba(14,159,110,.3);
+    animation: pulse 2.4s ease-out infinite;
+  }
+
+  @keyframes pulse {
+    70% { box-shadow: 0 0 0 12px rgba(14,159,110,0); }
+    100% { box-shadow: 0 0 0 0 rgba(14,159,110,0); }
+  }
+
+  #time {
+    font-family: "JetBrains Mono", ui-monospace, monospace;
+    font-size: clamp(4.8rem, 15vw, 12.5rem);
+    line-height: .92;
+    letter-spacing: 0;
+    color: var(--ink);
+    text-shadow: 0 12px 38px rgba(42,115,86,.13);
+    font-weight: 300;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .colon {
+    opacity: .48;
+    animation: soft-blink 1s step-end infinite;
+  }
+
+  @keyframes soft-blink {
+    50% { opacity: .16; }
+  }
+
+  .suffix {
+    display: inline-block;
+    margin-left: .18em;
+    transform: translateY(-.2em);
+    color: var(--muted);
+    font-family: "DM Sans", system-ui, sans-serif;
+    font-size: .18em;
+    font-weight: 700;
+    letter-spacing: .04em;
+  }
+
+  #date {
+    color: var(--ink-soft);
+    font-size: clamp(1rem, 2vw, 1.35rem);
+    line-height: 1.5;
+  }
+
+  .mantra {
+    max-width: 680px;
+    color: var(--muted);
+    font-size: clamp(1.02rem, 2.1vw, 1.36rem);
+    line-height: 1.65;
+  }
+
+  .side-panel {
+    border-left: 1px solid rgba(30,142,105,.14);
+    background: rgba(229,249,240,.3);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: clamp(22px, 3vw, 34px);
+  }
+
+  .metric {
+    display: grid;
+    gap: 8px;
+    padding-bottom: 22px;
+    border-bottom: 1px solid rgba(30,142,105,.14);
+  }
+
+  .metric:last-of-type {
+    border-bottom: 0;
+  }
+
+  .metric-label {
+    color: var(--muted);
+    font-size: .74rem;
+    font-weight: 700;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+  }
+
+  .metric-value {
+    color: var(--ink);
+    font-family: "JetBrains Mono", ui-monospace, monospace;
+    font-size: clamp(1.05rem, 2vw, 1.38rem);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  button, a {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .control {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 42px;
+    padding: 10px 14px;
+    border: 1px solid rgba(14,159,110,.22);
+    border-radius: 999px;
+    background: rgba(255,255,255,.45);
+    color: var(--ink);
+    font: 700 .76rem "DM Sans", system-ui, sans-serif;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    text-decoration: none;
+    cursor: pointer;
+    transition: transform .18s ease, border-color .22s ease, background .22s ease, color .22s ease;
+  }
+
+  .control:hover,
+  .control.active {
+    background: rgba(14,159,110,.1);
+    border-color: rgba(14,159,110,.45);
+    color: #087854;
+  }
+
+  .control:active {
+    transform: scale(.97);
+  }
+
+  .control:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 3px;
+  }
+
+  .scene-note {
+    color: rgba(18,59,43,.42);
+    font-size: .82rem;
+    line-height: 1.55;
+  }
+
+  @media (max-width: 820px) {
+    .shell {
+      place-items: stretch;
+      padding: 14px;
+    }
+
+    .clock-panel {
+      width: 100%;
+      min-height: calc(100vh - 28px);
+      grid-template-columns: 1fr;
+      border-radius: 22px;
+    }
+
+    .time-zone {
+      justify-content: center;
+      padding: 28px 20px;
+    }
+
+    #time {
+      font-size: clamp(3.2rem, 16vw, 6.2rem);
+    }
+
+    .side-panel {
+      border-left: 0;
+      border-top: 1px solid rgba(30,142,105,.14);
+      gap: 18px;
+    }
+
+    .metric {
+      padding-bottom: 14px;
+    }
+  }
+
+  @media (max-width: 460px) {
+    .clock-panel {
+      min-height: calc(100vh - 20px);
+    }
+
+    .time-zone {
+      padding: 24px 16px;
+    }
+
+    #time {
+      font-size: clamp(2.7rem, 15vw, 4.6rem);
+    }
+
+    .mantra {
+      font-size: .98rem;
+    }
+
+    .side-panel {
+      padding: 18px 16px;
+    }
+
+    .control {
+      flex: 1 1 auto;
+      min-width: 110px;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: .01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: .01ms !important;
+    }
+  }
+</style>
+</head>
+<body>
+<div id="scene-fallback" aria-hidden="true"></div>
+<canvas id="scene" aria-hidden="true"></canvas>
+<div class="grain" aria-hidden="true"></div>
+
+<main class="shell">
+  <section class="clock-panel" aria-label="Peace clock">
+    <div class="time-zone">
+      <div class="eyebrow"><span class="pulse-dot"></span><span id="phase">Still Morning</span></div>
+      <div id="time">00<span class="colon">:</span>00<span class="colon">:</span>00</div>
+      <div id="date">Monday, January 1</div>
+      <p class="mantra" id="mantra">Breathe in calm. Breathe out the noise. This moment is enough.</p>
+    </div>
+
+    <aside class="side-panel">
+      <div class="metric">
+        <div class="metric-label">Local Time</div>
+        <div class="metric-value" id="mini-time">00:00</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">Day Progress</div>
+        <div class="metric-value" id="progress">0%</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">Breath Pace</div>
+        <div class="metric-value" id="breath">4 - 4 - 6</div>
+      </div>
+      <p class="scene-note">Let the clock be quiet. Let the next minute arrive softly.</p>
+      <div class="controls">
+        <button class="control active" id="fmt-btn" type="button">12h</button>
+        <button class="control" id="motion-btn" type="button">Still</button>
+        <a class="control" href="FocusForest.html">Forest</a>
+      </div>
+    </aside>
+  </section>
+</main>
+
+<script>
+  const timeEl = document.getElementById('time');
+  const miniTimeEl = document.getElementById('mini-time');
+  const dateEl = document.getElementById('date');
+  const phaseEl = document.getElementById('phase');
+  const progressEl = document.getElementById('progress');
+  const fmtBtn = document.getElementById('fmt-btn');
+  const motionBtn = document.getElementById('motion-btn');
+  window.peaceClockState = { motionPaused: false };
+
+  const DAYS = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  let use12h = JSON.parse(localStorage.getItem('peaceClock12h') ?? 'true');
+  let motionPaused = false;
+
+  function pad(n) { return String(n).padStart(2, '0'); }
+
+  function getPhase(hour) {
+    if (hour < 5) return 'Quiet Night';
+    if (hour < 12) return 'Still Morning';
+    if (hour < 17) return 'Soft Afternoon';
+    if (hour < 21) return 'Golden Evening';
+    return 'Quiet Night';
+  }
+
+  function tick() {
+    const now = new Date();
+    const h24 = now.getHours();
+    const m = now.getMinutes();
+    const s = now.getSeconds();
+    let h = h24;
+    let suffix = '';
+
+    if (use12h) {
+      suffix = h24 >= 12 ? 'PM' : 'AM';
+      h = h24 % 12 || 12;
+    }
+
+    timeEl.innerHTML = `${pad(h)}<span class="colon">:</span>${pad(m)}<span class="colon">:</span>${pad(s)}${suffix ? `<span class="suffix">${suffix}</span>` : ''}`;
+    miniTimeEl.textContent = `${pad(h24)}:${pad(m)}:${pad(s)}`;
+    dateEl.textContent = `${DAYS[now.getDay()]}, ${MONTHS[now.getMonth()]} ${now.getDate()}, ${now.getFullYear()}`;
+    phaseEl.textContent = getPhase(h24);
+
+    const secondsToday = h24 * 3600 + m * 60 + s;
+    progressEl.textContent = `${Math.round((secondsToday / 86400) * 100)}%`;
+  }
+
+  function startClock() {
+    tick();
+    const delay = 1000 - (Date.now() % 1000);
+    setTimeout(() => {
+      tick();
+      setInterval(tick, 1000);
+    }, delay);
+  }
+
+  fmtBtn.textContent = use12h ? '12h' : '24h';
+  fmtBtn.classList.toggle('active', use12h);
+  fmtBtn.addEventListener('click', () => {
+    use12h = !use12h;
+    localStorage.setItem('peaceClock12h', JSON.stringify(use12h));
+    fmtBtn.textContent = use12h ? '12h' : '24h';
+    fmtBtn.classList.toggle('active', use12h);
+    tick();
+  });
+
+  motionBtn.addEventListener('click', () => {
+    motionPaused = !motionPaused;
+    window.peaceClockState.motionPaused = motionPaused;
+    motionBtn.textContent = motionPaused ? 'Flow' : 'Still';
+    motionBtn.classList.toggle('active', motionPaused);
+  });
+
+  document.addEventListener('keydown', event => {
+    if (event.key.toLowerCase() === 't') fmtBtn.click();
+    if (event.key.toLowerCase() === 'm') motionBtn.click();
+  });
+
+  startClock();
+</script>
+
+<script type="module">
+  import * as THREE from 'https://unpkg.com/three@0.160.0/build/three.module.js';
+
+  const canvas = document.getElementById('scene');
+  const fallback = document.getElementById('scene-fallback');
+  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  const renderer = new THREE.WebGLRenderer({
+    canvas,
+    antialias: true,
+    alpha: true,
+    powerPreference: 'high-performance'
+  });
+
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  fallback.style.display = 'none';
+
+  const scene = new THREE.Scene();
+  scene.fog = new THREE.Fog(0xeaf8f0, 9, 30);
+
+  const camera = new THREE.PerspectiveCamera(38, window.innerWidth / window.innerHeight, .1, 60);
+  camera.position.set(0, 2.7, 11);
+
+  const ambient = new THREE.HemisphereLight(0xffffff, 0xa8d8c8, 2.1);
+  scene.add(ambient);
+
+  const sun = new THREE.DirectionalLight(0xffffff, 2.2);
+  sun.position.set(-4, 7, 6);
+  sun.castShadow = true;
+  sun.shadow.mapSize.set(1024, 1024);
+  scene.add(sun);
+
+  const group = new THREE.Group();
+  scene.add(group);
+
+  const ringMat = new THREE.MeshPhysicalMaterial({
+    color: 0xdff9ef,
+    roughness: .18,
+    metalness: 0,
+    transmission: .46,
+    thickness: .35,
+    transparent: true,
+    opacity: .72,
+    clearcoat: .7,
+    clearcoatRoughness: .12
+  });
+
+  const accentMat = new THREE.MeshPhysicalMaterial({
+    color: 0x72cfaa,
+    roughness: .28,
+    transparent: true,
+    opacity: .5,
+    clearcoat: .5
+  });
+
+  const ringA = new THREE.Mesh(new THREE.TorusGeometry(3.25, .018, 16, 180), ringMat);
+  const ringB = new THREE.Mesh(new THREE.TorusGeometry(4.15, .014, 16, 200), ringMat.clone());
+  const ringC = new THREE.Mesh(new THREE.TorusGeometry(2.35, .012, 12, 160), accentMat);
+  ringA.rotation.x = Math.PI * .5;
+  ringB.rotation.x = Math.PI * .42;
+  ringB.rotation.y = Math.PI * .16;
+  ringC.rotation.x = Math.PI * .58;
+  ringC.rotation.z = Math.PI * .2;
+  group.add(ringA, ringB, ringC);
+
+  const waterGeo = new THREE.PlaneGeometry(26, 16, 90, 54);
+  const waterMat = new THREE.MeshStandardMaterial({
+    color: 0xd8eef2,
+    roughness: .82,
+    metalness: 0,
+    transparent: true,
+    opacity: .42
+  });
+  const water = new THREE.Mesh(waterGeo, waterMat);
+  water.rotation.x = -Math.PI / 2;
+  water.position.y = -2.25;
+  water.position.z = -2.8;
+  water.receiveShadow = true;
+  scene.add(water);
+
+  const petalGeo = new THREE.SphereGeometry(.12, 18, 10);
+  const petalMat = new THREE.MeshStandardMaterial({
+    color: 0xffeee5,
+    roughness: .58,
+    transparent: true,
+    opacity: .9
+  });
+  const petalCount = window.innerWidth < 700 ? 30 : 58;
+  const petals = new THREE.InstancedMesh(petalGeo, petalMat, petalCount);
+  petals.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+  scene.add(petals);
+
+  const petalData = Array.from({ length: petalCount }, (_, i) => ({
+    angle: (i / petalCount) * Math.PI * 2 + Math.random() * .4,
+    radius: 2.4 + Math.random() * 5.4,
+    y: -1.6 + Math.random() * 4.8,
+    speed: .07 + Math.random() * .12,
+    scale: .7 + Math.random() * 1.8,
+    tilt: Math.random() * Math.PI
+  }));
+
+  const leafGeo = new THREE.CapsuleGeometry(.045, .45, 5, 12);
+  const leafMat = new THREE.MeshStandardMaterial({
+    color: 0x2aa876,
+    roughness: .5,
+    transparent: true,
+    opacity: .38
+  });
+  const leaves = new THREE.Group();
+  for (let i = 0; i < 18; i++) {
+    const leaf = new THREE.Mesh(leafGeo, leafMat);
+    const a = (i / 18) * Math.PI * 2;
+    leaf.position.set(Math.cos(a) * (2.2 + Math.random() * 2.7), -1.8 + Math.random() * .5, Math.sin(a) * (1.6 + Math.random() * 1.8));
+    leaf.rotation.set(Math.PI / 2 + Math.random() * .2, 0, a + Math.PI / 2);
+    leaf.scale.setScalar(.8 + Math.random() * 1.5);
+    leaves.add(leaf);
+  }
+  group.add(leaves);
+
+  const shimmerGeo = new THREE.BufferGeometry();
+  const shimmerCount = window.innerWidth < 700 ? 80 : 160;
+  const shimmerPositions = new Float32Array(shimmerCount * 3);
+  for (let i = 0; i < shimmerCount; i++) {
+    shimmerPositions[i * 3] = (Math.random() - .5) * 18;
+    shimmerPositions[i * 3 + 1] = -1.9 + Math.random() * 5.4;
+    shimmerPositions[i * 3 + 2] = -7 + Math.random() * 8;
+  }
+  shimmerGeo.setAttribute('position', new THREE.BufferAttribute(shimmerPositions, 3));
+  const shimmer = new THREE.Points(shimmerGeo, new THREE.PointsMaterial({
+    color: 0x7ed7b6,
+    size: .035,
+    transparent: true,
+    opacity: .42,
+    depthWrite: false
+  }));
+  scene.add(shimmer);
+
+  const dummy = new THREE.Object3D();
+  const clock = new THREE.Clock();
+  let pointerX = 0;
+  let pointerY = 0;
+
+  window.addEventListener('pointermove', event => {
+    pointerX = (event.clientX / window.innerWidth - .5) * 2;
+    pointerY = (event.clientY / window.innerHeight - .5) * 2;
+  }, { passive: true });
+
+  function updateWater(t) {
+    const pos = water.geometry.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+      const x = pos.getX(i);
+      const y = pos.getY(i);
+      const z = Math.sin(x * .8 + t * .75) * .035 + Math.cos(y * .9 + t * .55) * .028;
+      pos.setZ(i, z);
+    }
+    pos.needsUpdate = true;
+    water.geometry.computeVertexNormals();
+  }
+
+  function updatePetals(t) {
+    petalData.forEach((p, i) => {
+      const a = p.angle + t * p.speed;
+      const lift = Math.sin(t * .7 + p.tilt) * .22;
+      dummy.position.set(Math.cos(a) * p.radius, p.y + lift, Math.sin(a) * p.radius - 2.2);
+      dummy.rotation.set(Math.sin(t + p.tilt) * .8, a, Math.cos(t * .8 + p.tilt) * .6);
+      dummy.scale.set(p.scale * 1.25, p.scale * .28, p.scale * .72);
+      dummy.updateMatrix();
+      petals.setMatrixAt(i, dummy.matrix);
+    });
+    petals.instanceMatrix.needsUpdate = true;
+  }
+
+  function animate() {
+    requestAnimationFrame(animate);
+    if (window.peaceClockState?.motionPaused || reduceMotion) {
+      renderer.render(scene, camera);
+      return;
+    }
+
+    const t = clock.getElapsedTime();
+    group.rotation.y = Math.sin(t * .12) * .08 + pointerX * .045;
+    group.rotation.x = pointerY * .035;
+    ringA.rotation.z = t * .08;
+    ringB.rotation.z = -t * .045;
+    ringC.rotation.z = t * .11;
+    shimmer.rotation.y = t * .025;
+    camera.position.x += ((pointerX * .35) - camera.position.x) * .025;
+    camera.position.y += ((2.7 - pointerY * .18) - camera.position.y) * .025;
+    camera.lookAt(0, 0, 0);
+    updatePetals(t);
+    updateWater(t);
+    renderer.render(scene, camera);
+  }
+
+  window.addEventListener('resize', () => {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  });
+
+  animate();
+</script>
+</body>
+</html>
