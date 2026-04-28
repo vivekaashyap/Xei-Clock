@@ -2225,7 +2225,18 @@ function loadCurrentSong(){
   if(currentIdx<0||currentIdx>=currentPlaylist.length) return;
   const song=currentPlaylist[currentIdx];
   if(!song?.url){ showToast('⚠ No audio file. Add songs first.'); return }
-  audioEl.src=song.url;
+  try {
+    // encode URL to handle spaces / non-ASCII characters in filenames
+    audioEl.src = song.url;
+  } catch(e){
+    console.error('Failed to encode audio URL, using raw value', song.url, e);
+    audioEl.src = song.url;
+  }
+  // helpful debug logging for failures
+  audioEl.onerror = function(ev){
+    console.error('Audio element error', audioEl.error, 'src=', audioEl.src, ev);
+    showToast('❌ Audio load error — check DevTools Network for details.');
+  };
   audioEl.volume=$('vol-slider').value/100;
   audioEl.play().then(()=>{
     isPlaying=true;
