@@ -2,3 +2,5 @@ node_modules/
 .cache/
 .replit.local
 npm-debug.log*
+music/
+*.m4a

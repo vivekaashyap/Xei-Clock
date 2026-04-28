@@ -52,7 +52,7 @@
     .clock-date{margin-top:8px;color:var(--text2);font-size:14px}
     .colon{display:inline-block;color:var(--neon);}
     @keyframes fadeBlink{50%{opacity:0}} 
-    .colon.blink{animation:fadeBlink .6s steps(1) infinite}
+    .colon.blink{animation:fadeBlink .4s steps(1) infinite}
     .small{font-size:13px;color:var(--muted)}
 
     /* subtle background animation */
@@ -88,7 +88,7 @@
       <div class="stage">
         <div id="three-container"></div>
         <div class="info">
-          <div id="time" class="clock-digital">00:00:00</div>
+          <div id="time" class="clock-digital"><span class="time-h">00</span><span class="colon blink">:</span><span class="time-m">00</span><span class="colon blink">:</span><span class="time-s">00</span></div>
           <div id="date" class="clock-date">Loading date…</div>
           <div style="height:18px"></div>
           <div class="small">A calm animated 3D orb reflects time and adds a soft, meditative presence. Use the theme toggle to switch between dark and light modes. The theme is saved locally.</div>
@@ -107,7 +107,9 @@
     const savedTheme = ls.get('sereneClockTheme','dark') || 'dark';
     document.documentElement.setAttribute('data-theme', savedTheme);
     const modeToggle = $('mode-toggle');
-    modeToggle.addEventListener('click', ()=>{ const t = document.documentElement.getAttribute('data-theme')==='dark'?'light':'dark'; document.documentElement.setAttribute('data-theme',t); ls.set('sereneClockTheme',t); });
+    function updateModeButton(){ modeToggle.textContent = document.documentElement.getAttribute('data-theme')==='dark' ? '🌙' : '🌞'; }
+    modeToggle.addEventListener('click', ()=>{ const t = document.documentElement.getAttribute('data-theme')==='dark'?'light':'dark'; document.documentElement.setAttribute('data-theme',t); ls.set('sereneClockTheme',t); updateModeButton(); });
+    updateModeButton();
 
     // Background gentle particles (canvas)
     (function bgParticles(){
@@ -160,7 +162,23 @@
       render();
 
       // theme sync: adjust material & lights
-      function applyTheme(t){ if(t==='light'){ mat.color.set(0x2b7cff); mat.emissive.set(0x052035); mat.emissiveIntensity=0.18; p1.color.set(0xfff4d6); p2.color.set(0x6bb9ff); amb.intensity=0.9 } else { mat.color.set(0x66e5c9); mat.emissive.set(0x07231a); mat.emissiveIntensity=0.5; p1.color.set(0x66e5c9); p2.color.set(0x2b7cff); amb.intensity=0.6 } }
+      function applyTheme(t){
+        if(t==='light'){
+          mat.color.set(0x10b981);
+          mat.emissive.set(0x0b2e24);
+          mat.emissiveIntensity=0.12;
+          p1.color.set(0x10b981);
+          p2.color.set(0x34d399);
+          amb.intensity=0.9;
+        } else {
+          mat.color.set(0x10b981);
+          mat.emissive.set(0x07231a);
+          mat.emissiveIntensity=0.5;
+          p1.color.set(0x34d399);
+          p2.color.set(0x10b981);
+          amb.intensity=0.6;
+        }
+      }
       applyTheme(document.documentElement.getAttribute('data-theme'));
       const observer = new MutationObserver(()=>applyTheme(document.documentElement.getAttribute('data-theme')));
       observer.observe(document.documentElement, {attributes:true, attributeFilter:['data-theme']});
@@ -170,471 +188,17 @@
     (function digital(){
       const TIME = $('time'), DATE = $('date');
       function pad(n){return String(n).padStart(2,'0')}
-      function tick(){ const now = new Date(); TIME.textContent = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`; DATE.textContent = now.toLocaleDateString(undefined,{weekday:'long', month:'long', day:'numeric'}); }
+      function tick(){
+        const now = new Date();
+        const h = pad(now.getHours());
+        const m = pad(now.getMinutes());
+        const s = pad(now.getSeconds());
+        // render with blinking colon (CSS-driven)
+        TIME.innerHTML = `<span class="time-h">${h}</span><span class="colon blink">:</span><span class="time-m">${m}</span><span class="colon blink">:</span><span class="time-s">${s}</span>`;
+        DATE.textContent = now.toLocaleDateString(undefined,{weekday:'long', month:'long', day:'numeric'});
+      }
       tick(); setInterval(tick, 250);
     })();
   </script>
-</body>
-</html>
-
-  .metric-label {
-    color: var(--muted);
-    font-size: .74rem;
-    font-weight: 700;
-    letter-spacing: .12em;
-    text-transform: uppercase;
-  }
-
-  .metric-value {
-    color: var(--ink);
-    font-family: "JetBrains Mono", ui-monospace, monospace;
-    font-size: clamp(1.05rem, 2vw, 1.38rem);
-    font-variant-numeric: tabular-nums;
-  }
-
-  .controls {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
-  }
-
-  button, a {
-    -webkit-tap-highlight-color: transparent;
-  }
-
-  .control {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 42px;
-    padding: 10px 14px;
-    border: 1px solid rgba(14,159,110,.22);
-    border-radius: 999px;
-    background: rgba(255,255,255,.45);
-    color: var(--ink);
-    font: 700 .76rem "DM Sans", system-ui, sans-serif;
-    letter-spacing: .08em;
-    text-transform: uppercase;
-    text-decoration: none;
-    cursor: pointer;
-    transition: transform .18s ease, border-color .22s ease, background .22s ease, color .22s ease;
-  }
-
-  .control:hover,
-  .control.active {
-    background: rgba(14,159,110,.1);
-    border-color: rgba(14,159,110,.45);
-    color: #087854;
-  }
-
-  .control:active {
-    transform: scale(.97);
-  }
-
-  .control:focus-visible {
-    outline: 2px solid var(--accent);
-    outline-offset: 3px;
-  }
-
-  .scene-note {
-    color: rgba(18,59,43,.42);
-    font-size: .82rem;
-    line-height: 1.55;
-  }
-
-  @media (max-width: 820px) {
-    .shell {
-      place-items: stretch;
-      padding: 14px;
-    }
-
-    .clock-panel {
-      width: 100%;
-      min-height: calc(100vh - 28px);
-      grid-template-columns: 1fr;
-      border-radius: 22px;
-    }
-
-    .time-zone {
-      justify-content: center;
-      padding: 28px 20px;
-    }
-
-    #time {
-      font-size: clamp(3.2rem, 16vw, 6.2rem);
-    }
-
-    .side-panel {
-      border-left: 0;
-      border-top: 1px solid rgba(30,142,105,.14);
-      gap: 18px;
-    }
-
-    .metric {
-      padding-bottom: 14px;
-    }
-  }
-
-  @media (max-width: 460px) {
-    .clock-panel {
-      min-height: calc(100vh - 20px);
-    }
-
-    .time-zone {
-      padding: 24px 16px;
-    }
-
-    #time {
-      font-size: clamp(2.7rem, 15vw, 4.6rem);
-    }
-
-    .mantra {
-      font-size: .98rem;
-    }
-
-    .side-panel {
-      padding: 18px 16px;
-    }
-
-    .control {
-      flex: 1 1 auto;
-      min-width: 110px;
-    }
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    *, *::before, *::after {
-      animation-duration: .01ms !important;
-      animation-iteration-count: 1 !important;
-      transition-duration: .01ms !important;
-    }
-  }
-</style>
-</head>
-<body>
-<div id="scene-fallback" aria-hidden="true"></div>
-<canvas id="scene" aria-hidden="true"></canvas>
-<div class="grain" aria-hidden="true"></div>
-
-<main class="shell">
-  <section class="clock-panel" aria-label="Peace clock">
-    <div class="time-zone">
-      <div class="eyebrow"><span class="pulse-dot"></span><span id="phase">Still Morning</span></div>
-      <div id="time">00<span class="colon">:</span>00<span class="colon">:</span>00</div>
-      <div id="date">Monday, January 1</div>
-      <p class="mantra" id="mantra">Breathe in calm. Breathe out the noise. This moment is enough.</p>
-    </div>
-
-    <aside class="side-panel">
-      <div class="metric">
-        <div class="metric-label">Local Time</div>
-        <div class="metric-value" id="mini-time">00:00</div>
-      </div>
-      <div class="metric">
-        <div class="metric-label">Day Progress</div>
-        <div class="metric-value" id="progress">0%</div>
-      </div>
-      <div class="metric">
-        <div class="metric-label">Breath Pace</div>
-        <div class="metric-value" id="breath">4 - 4 - 6</div>
-      </div>
-      <p class="scene-note">Let the clock be quiet. Let the next minute arrive softly.</p>
-      <div class="controls">
-        <button class="control active" id="fmt-btn" type="button">12h</button>
-        <button class="control" id="motion-btn" type="button">Still</button>
-        <a class="control" href="FocusForest.html">Forest</a>
-      </div>
-    </aside>
-  </section>
-</main>
-
-<script>
-  const timeEl = document.getElementById('time');
-  const miniTimeEl = document.getElementById('mini-time');
-  const dateEl = document.getElementById('date');
-  const phaseEl = document.getElementById('phase');
-  const progressEl = document.getElementById('progress');
-  const fmtBtn = document.getElementById('fmt-btn');
-  const motionBtn = document.getElementById('motion-btn');
-  window.peaceClockState = { motionPaused: false };
-
-  const DAYS = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
-  const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-  let use12h = JSON.parse(localStorage.getItem('peaceClock12h') ?? 'true');
-  let motionPaused = false;
-
-  function pad(n) { return String(n).padStart(2, '0'); }
-
-  function getPhase(hour) {
-    if (hour < 5) return 'Quiet Night';
-    if (hour < 12) return 'Still Morning';
-    if (hour < 17) return 'Soft Afternoon';
-    if (hour < 21) return 'Golden Evening';
-    return 'Quiet Night';
-  }
-
-  function tick() {
-    const now = new Date();
-    const h24 = now.getHours();
-    const m = now.getMinutes();
-    const s = now.getSeconds();
-    let h = h24;
-    let suffix = '';
-
-    if (use12h) {
-      suffix = h24 >= 12 ? 'PM' : 'AM';
-      h = h24 % 12 || 12;
-    }
-
-    timeEl.innerHTML = `${pad(h)}<span class="colon">:</span>${pad(m)}<span class="colon">:</span>${pad(s)}${suffix ? `<span class="suffix">${suffix}</span>` : ''}`;
-    miniTimeEl.textContent = `${pad(h24)}:${pad(m)}:${pad(s)}`;
-    dateEl.textContent = `${DAYS[now.getDay()]}, ${MONTHS[now.getMonth()]} ${now.getDate()}, ${now.getFullYear()}`;
-    phaseEl.textContent = getPhase(h24);
-
-    const secondsToday = h24 * 3600 + m * 60 + s;
-    progressEl.textContent = `${Math.round((secondsToday / 86400) * 100)}%`;
-  }
-
-  function startClock() {
-    tick();
-    const delay = 1000 - (Date.now() % 1000);
-    setTimeout(() => {
-      tick();
-      setInterval(tick, 1000);
-    }, delay);
-  }
-
-  fmtBtn.textContent = use12h ? '12h' : '24h';
-  fmtBtn.classList.toggle('active', use12h);
-  fmtBtn.addEventListener('click', () => {
-    use12h = !use12h;
-    localStorage.setItem('peaceClock12h', JSON.stringify(use12h));
-    fmtBtn.textContent = use12h ? '12h' : '24h';
-    fmtBtn.classList.toggle('active', use12h);
-    tick();
-  });
-
-  motionBtn.addEventListener('click', () => {
-    motionPaused = !motionPaused;
-    window.peaceClockState.motionPaused = motionPaused;
-    motionBtn.textContent = motionPaused ? 'Flow' : 'Still';
-    motionBtn.classList.toggle('active', motionPaused);
-  });
-
-  document.addEventListener('keydown', event => {
-    if (event.key.toLowerCase() === 't') fmtBtn.click();
-    if (event.key.toLowerCase() === 'm') motionBtn.click();
-  });
-
-  startClock();
-</script>
-
-<script type="module">
-  import * as THREE from 'https://unpkg.com/three@0.160.0/build/three.module.js';
-
-  const canvas = document.getElementById('scene');
-  const fallback = document.getElementById('scene-fallback');
-  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-
-  const renderer = new THREE.WebGLRenderer({
-    canvas,
-    antialias: true,
-    alpha: true,
-    powerPreference: 'high-performance'
-  });
-
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
-  renderer.setSize(window.innerWidth, window.innerHeight);
-  renderer.outputColorSpace = THREE.SRGBColorSpace;
-  renderer.shadowMap.enabled = true;
-  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-  fallback.style.display = 'none';
-
-  const scene = new THREE.Scene();
-  scene.fog = new THREE.Fog(0xeaf8f0, 9, 30);
-
-  const camera = new THREE.PerspectiveCamera(38, window.innerWidth / window.innerHeight, .1, 60);
-  camera.position.set(0, 2.7, 11);
-
-  const ambient = new THREE.HemisphereLight(0xffffff, 0xa8d8c8, 2.1);
-  scene.add(ambient);
-
-  const sun = new THREE.DirectionalLight(0xffffff, 2.2);
-  sun.position.set(-4, 7, 6);
-  sun.castShadow = true;
-  sun.shadow.mapSize.set(1024, 1024);
-  scene.add(sun);
-
-  const group = new THREE.Group();
-  scene.add(group);
-
-  const ringMat = new THREE.MeshPhysicalMaterial({
-    color: 0xdff9ef,
-    roughness: .18,
-    metalness: 0,
-    transmission: .46,
-    thickness: .35,
-    transparent: true,
-    opacity: .72,
-    clearcoat: .7,
-    clearcoatRoughness: .12
-  });
-
-  const accentMat = new THREE.MeshPhysicalMaterial({
-    color: 0x72cfaa,
-    roughness: .28,
-    transparent: true,
-    opacity: .5,
-    clearcoat: .5
-  });
-
-  const ringA = new THREE.Mesh(new THREE.TorusGeometry(3.25, .018, 16, 180), ringMat);
-  const ringB = new THREE.Mesh(new THREE.TorusGeometry(4.15, .014, 16, 200), ringMat.clone());
-  const ringC = new THREE.Mesh(new THREE.TorusGeometry(2.35, .012, 12, 160), accentMat);
-  ringA.rotation.x = Math.PI * .5;
-  ringB.rotation.x = Math.PI * .42;
-  ringB.rotation.y = Math.PI * .16;
-  ringC.rotation.x = Math.PI * .58;
-  ringC.rotation.z = Math.PI * .2;
-  group.add(ringA, ringB, ringC);
-
-  const waterGeo = new THREE.PlaneGeometry(26, 16, 90, 54);
-  const waterMat = new THREE.MeshStandardMaterial({
-    color: 0xd8eef2,
-    roughness: .82,
-    metalness: 0,
-    transparent: true,
-    opacity: .42
-  });
-  const water = new THREE.Mesh(waterGeo, waterMat);
-  water.rotation.x = -Math.PI / 2;
-  water.position.y = -2.25;
-  water.position.z = -2.8;
-  water.receiveShadow = true;
-  scene.add(water);
-
-  const petalGeo = new THREE.SphereGeometry(.12, 18, 10);
-  const petalMat = new THREE.MeshStandardMaterial({
-    color: 0xffeee5,
-    roughness: .58,
-    transparent: true,
-    opacity: .9
-  });
-  const petalCount = window.innerWidth < 700 ? 30 : 58;
-  const petals = new THREE.InstancedMesh(petalGeo, petalMat, petalCount);
-  petals.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-  scene.add(petals);
-
-  const petalData = Array.from({ length: petalCount }, (_, i) => ({
-    angle: (i / petalCount) * Math.PI * 2 + Math.random() * .4,
-    radius: 2.4 + Math.random() * 5.4,
-    y: -1.6 + Math.random() * 4.8,
-    speed: .07 + Math.random() * .12,
-    scale: .7 + Math.random() * 1.8,
-    tilt: Math.random() * Math.PI
-  }));
-
-  const leafGeo = new THREE.CapsuleGeometry(.045, .45, 5, 12);
-  const leafMat = new THREE.MeshStandardMaterial({
-    color: 0x2aa876,
-    roughness: .5,
-    transparent: true,
-    opacity: .38
-  });
-  const leaves = new THREE.Group();
-  for (let i = 0; i < 18; i++) {
-    const leaf = new THREE.Mesh(leafGeo, leafMat);
-    const a = (i / 18) * Math.PI * 2;
-    leaf.position.set(Math.cos(a) * (2.2 + Math.random() * 2.7), -1.8 + Math.random() * .5, Math.sin(a) * (1.6 + Math.random() * 1.8));
-    leaf.rotation.set(Math.PI / 2 + Math.random() * .2, 0, a + Math.PI / 2);
-    leaf.scale.setScalar(.8 + Math.random() * 1.5);
-    leaves.add(leaf);
-  }
-  group.add(leaves);
-
-  const shimmerGeo = new THREE.BufferGeometry();
-  const shimmerCount = window.innerWidth < 700 ? 80 : 160;
-  const shimmerPositions = new Float32Array(shimmerCount * 3);
-  for (let i = 0; i < shimmerCount; i++) {
-    shimmerPositions[i * 3] = (Math.random() - .5) * 18;
-    shimmerPositions[i * 3 + 1] = -1.9 + Math.random() * 5.4;
-    shimmerPositions[i * 3 + 2] = -7 + Math.random() * 8;
-  }
-  shimmerGeo.setAttribute('position', new THREE.BufferAttribute(shimmerPositions, 3));
-  const shimmer = new THREE.Points(shimmerGeo, new THREE.PointsMaterial({
-    color: 0x7ed7b6,
-    size: .035,
-    transparent: true,
-    opacity: .42,
-    depthWrite: false
-  }));
-  scene.add(shimmer);
-
-  const dummy = new THREE.Object3D();
-  const clock = new THREE.Clock();
-  let pointerX = 0;
-  let pointerY = 0;
-
-  window.addEventListener('pointermove', event => {
-    pointerX = (event.clientX / window.innerWidth - .5) * 2;
-    pointerY = (event.clientY / window.innerHeight - .5) * 2;
-  }, { passive: true });
-
-  function updateWater(t) {
-    const pos = water.geometry.attributes.position;
-    for (let i = 0; i < pos.count; i++) {
-      const x = pos.getX(i);
-      const y = pos.getY(i);
-      const z = Math.sin(x * .8 + t * .75) * .035 + Math.cos(y * .9 + t * .55) * .028;
-      pos.setZ(i, z);
-    }
-    pos.needsUpdate = true;
-    water.geometry.computeVertexNormals();
-  }
-
-  function updatePetals(t) {
-    petalData.forEach((p, i) => {
-      const a = p.angle + t * p.speed;
-      const lift = Math.sin(t * .7 + p.tilt) * .22;
-      dummy.position.set(Math.cos(a) * p.radius, p.y + lift, Math.sin(a) * p.radius - 2.2);
-      dummy.rotation.set(Math.sin(t + p.tilt) * .8, a, Math.cos(t * .8 + p.tilt) * .6);
-      dummy.scale.set(p.scale * 1.25, p.scale * .28, p.scale * .72);
-      dummy.updateMatrix();
-      petals.setMatrixAt(i, dummy.matrix);
-    });
-    petals.instanceMatrix.needsUpdate = true;
-  }
-
-  function animate() {
-    requestAnimationFrame(animate);
-    if (window.peaceClockState?.motionPaused || reduceMotion) {
-      renderer.render(scene, camera);
-      return;
-    }
-
-    const t = clock.getElapsedTime();
-    group.rotation.y = Math.sin(t * .12) * .08 + pointerX * .045;
-    group.rotation.x = pointerY * .035;
-    ringA.rotation.z = t * .08;
-    ringB.rotation.z = -t * .045;
-    ringC.rotation.z = t * .11;
-    shimmer.rotation.y = t * .025;
-    camera.position.x += ((pointerX * .35) - camera.position.x) * .025;
-    camera.position.y += ((2.7 - pointerY * .18) - camera.position.y) * .025;
-    camera.lookAt(0, 0, 0);
-    updatePetals(t);
-    updateWater(t);
-    renderer.render(scene, camera);
-  }
-
-  window.addEventListener('resize', () => {
-    camera.aspect = window.innerWidth / window.innerHeight;
-    camera.updateProjectionMatrix();
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
-  });
-
-  animate();
-</script>
 </body>
 </html>
