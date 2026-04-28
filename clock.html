@@ -7,12 +7,28 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
   <style>
     :root{
-      --bg:#071018; --bg-2:#08161b; --glass:rgba(255,255,255,0.04);
-      --accent: #66e5c9; --accent-2:#2ac7a0; --muted:rgba(255,255,255,0.6);
-      --card-shadow: 0 12px 40px rgba(2,8,10,.6);
+      --emerald: #10b981;
+      --neon: #34d399;
+      --bg:#050f0a;
+      --bg-2:#0a1a12;
+      --glass:rgba(255,255,255,0.03);
+      --text:#e6f5ee;
+      --text2:#9dbfad;
+      --muted:rgba(230,245,238,0.9);
+      --card-shadow: 0 12px 40px rgba(0,0,0,.6);
       --transition: 350ms cubic-bezier(.22,1,.36,1);
     }
-    [data-theme='light']{ --bg:#f6fbff; --bg-2:#eef7fb; --glass:rgba(0,0,0,0.04); --accent:#2b7cff; --accent-2:#6bb9ff; --muted:rgba(0,0,0,.6); --card-shadow:0 12px 40px rgba(4,12,24,.06); }
+    [data-theme='light']{
+      --emerald: #059669;
+      --neon: #34d399;
+      --bg:#f0faf4;
+      --bg-2:#eaf8ef;
+      --glass:rgba(0,0,0,0.04);
+      --text:#072019;
+      --text2:#2d6047;
+      --muted:rgba(0,0,0,0.75);
+      --card-shadow:0 12px 40px rgba(4,12,24,.06);
+    }
 
     *{box-sizing:border-box}
     html,body{height:100%;margin:0;font-family:Inter,system-ui,Arial;background:linear-gradient(180deg,var(--bg),var(--bg-2));color:var(--muted);transition:background var(--transition),color var(--transition)}
@@ -22,8 +38,8 @@
 
     header{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
     .title{display:flex;align-items:center;gap:14px}
-    .logo{width:48px;height:48px;border-radius:12px;background:linear-gradient(135deg,var(--accent),var(--accent-2));display:flex;align-items:center;justify-content:center;font-weight:700;color:#012;box-shadow:0 6px 24px rgba(42,199,160,.12)}
-    h1{font-size:1.35rem;margin:0;color:var(--muted);font-weight:600}
+    .logo{width:48px;height:48px;border-radius:12px;background:linear-gradient(135deg,var(--neon),var(--emerald));display:flex;align-items:center;justify-content:center;font-weight:800;color:#012;box-shadow:0 6px 24px rgba(16,185,129,.08)}
+    h1{font-size:1.35rem;margin:0;color:var(--text);font-weight:700}
     .controls{display:flex;gap:12px;align-items:center}
     .btn{background:var(--glass);border:1px solid rgba(255,255,255,0.03);padding:8px 12px;border-radius:10px;color:var(--muted);cursor:pointer;transition:all var(--transition)}
     .btn:hover{transform:translateY(-3px)}
@@ -32,8 +48,11 @@
     .stage{display:grid;grid-template-columns:420px 1fr;gap:24px;align-items:center}
     #three-container{width:420px;height:420px;border-radius:12px;overflow:hidden;display:flex;align-items:center;justify-content:center}
     .info{padding:18px 12px}
-    .clock-digital{font-family:Inter,monospace;font-weight:700;font-size:48px;color:var(--muted);line-height:1}
-    .clock-date{margin-top:8px;color:var(--muted);font-size:14px}
+    .clock-digital{font-family:Inter,monospace;font-weight:700;font-size:48px;color:var(--text);line-height:1}
+    .clock-date{margin-top:8px;color:var(--text2);font-size:14px}
+    .colon{display:inline-block;color:var(--neon);}
+    @keyframes fadeBlink{50%{opacity:0}} 
+    .colon.blink{animation:fadeBlink .6s steps(1) infinite}
     .small{font-size:13px;color:var(--muted)}
 
     /* subtle background animation */
@@ -41,6 +60,14 @@
 
     /* responsive */
     @media(max-width:920px){ .stage{grid-template-columns:1fr;grid-auto-rows:auto} #three-container{width:100%;height:320px} }
+    /* compact: show only time on smaller laptops/phones */
+    @media(max-width:1100px){
+      #three-container{display:none}
+      .clock-digital{font-size:72px;text-align:center}
+      .clock-date,.small,.controls{display:none}
+      .panel{padding:16px}
+      header .title{justify-content:center}
+    }
   </style>
 </head>
 <body>
