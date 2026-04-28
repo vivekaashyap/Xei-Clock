@@ -3,201 +3,163 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Serene 3D Clock</title>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <title>FocusClock — Minimal</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
   <style>
     :root{
-      --emerald: #10b981;
-      --neon: #34d399;
-      --bg:#050f0a;
-      --bg-2:#0a1a12;
-      --glass:rgba(255,255,255,0.03);
-      --text:#e6f5ee;
-      --text2:#9dbfad;
-      --muted:rgba(230,245,238,0.9);
-      --card-shadow: 0 12px 40px rgba(0,0,0,.6);
-      --transition: 350ms cubic-bezier(.22,1,.36,1);
+      --bg-1: #04120d;
+      --bg-2: #071b14;
+      --accent: #16a34a;
+      --muted: rgba(255,255,255,0.75);
+      --text: #e6f5ee;
+      --glass: rgba(255,255,255,0.03);
     }
     [data-theme='light']{
-      --emerald: #059669;
-      --neon: #34d399;
-      --bg:#f0faf4;
-      --bg-2:#eaf8ef;
-      --glass:rgba(0,0,0,0.04);
-      --text:#072019;
-      --text2:#2d6047;
-      --muted:rgba(0,0,0,0.75);
-      --card-shadow:0 12px 40px rgba(4,12,24,.06);
+      --bg-1: #f6fff8;
+      --bg-2: #f0fbf3;
+      --accent: #059669;
+      --muted: rgba(0,0,0,0.65);
+      --text: #06221a;
+      --glass: rgba(0,0,0,0.04);
     }
 
-    *{box-sizing:border-box}
-    html,body{height:100%;margin:0;font-family:Inter,system-ui,Arial;background:linear-gradient(180deg,var(--bg),var(--bg-2));color:var(--muted);transition:background var(--transition),color var(--transition)}
+    html,body{height:100%;margin:0;font-family:Inter,system-ui,Segoe UI,Arial;background:linear-gradient(180deg,var(--bg-1),var(--bg-2));color:var(--text);-webkit-font-smoothing:antialiased}
 
-    .wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:40px}
-    .panel{width:980px;max-width:96vw;border-radius:18px;padding:28px;background:linear-gradient(180deg,rgba(255,255,255,0.02),transparent);backdrop-filter:blur(8px);box-shadow:var(--card-shadow);position:relative;overflow:hidden}
+    /* Minimal top-right theme toggle */
+    .theme-toggle{position:fixed;right:18px;top:18px;width:44px;height:44px;border-radius:10px;background:var(--glass);border:1px solid rgba(255,255,255,0.04);display:flex;align-items:center;justify-content:center;color:var(--muted);cursor:pointer;backdrop-filter:blur(6px)}
 
-    header{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
-    .title{display:flex;align-items:center;gap:14px}
-    .logo{width:48px;height:48px;border-radius:12px;background:linear-gradient(135deg,var(--neon),var(--emerald));display:flex;align-items:center;justify-content:center;font-weight:800;color:#012;box-shadow:0 6px 24px rgba(16,185,129,.08)}
-    h1{font-size:1.35rem;margin:0;color:var(--text);font-weight:700}
-    .controls{display:flex;gap:12px;align-items:center}
-    .btn{background:var(--glass);border:1px solid rgba(255,255,255,0.03);padding:8px 12px;border-radius:10px;color:var(--muted);cursor:pointer;transition:all var(--transition)}
-    .btn:hover{transform:translateY(-3px)}
+    /* Centered clock */
+    .wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
+    .clock-card{display:flex;flex-direction:column;align-items:center;gap:18px;padding:28px;border-radius:18px;background:transparent}
 
-    /* stage */
-    .stage{display:grid;grid-template-columns:420px 1fr;gap:24px;align-items:center}
-    #three-container{width:420px;height:420px;border-radius:12px;overflow:hidden;display:flex;align-items:center;justify-content:center}
-    .info{padding:18px 12px}
-    .clock-digital{font-family:Inter,monospace;font-weight:700;font-size:48px;color:var(--text);line-height:1}
-    .clock-date{margin-top:8px;color:var(--text2);font-size:14px}
-    .colon{display:inline-block;color:var(--neon);}
-    @keyframes fadeBlink{50%{opacity:0}} 
-    .colon.blink{animation:fadeBlink .4s steps(1) infinite}
-    .small{font-size:13px;color:var(--muted)}
+    .time{font-weight:800;letter-spacing: -0.02em;line-height:0.95;text-align:center;font-variant-numeric:tabular-nums;}
+    .time .digits{font-size:clamp(4.5rem, 18vw, 12rem);}
+    .time .seconds{font-size:clamp(1.2rem, 2.6vw, 1.8rem);opacity:.9;margin-left:8px}
 
-    /* subtle background animation */
-    canvas#bg{position:fixed;inset:0;z-index:0;pointer-events:none}
+    .date{font-size:clamp(.95rem,1.6vw,1.12rem);color:var(--muted);text-align:center}
 
-    /* responsive */
-    @media(max-width:920px){ .stage{grid-template-columns:1fr;grid-auto-rows:auto} #three-container{width:100%;height:320px} }
-    /* compact: show only time on smaller laptops/phones */
-    @media(max-width:1100px){
-      #three-container{display:none}
-      .clock-digital{font-size:72px;text-align:center}
-      .clock-date,.small,.controls{display:none}
-      .panel{padding:16px}
-      header .title{justify-content:center}
+    /* 3D container (small, punchy) */
+    #three-container{width:clamp(180px,28vw,420px);height:clamp(180px,28vw,420px);margin-top:6px}
+
+    .colon{display:inline-block;color:var(--accent);}
+    @keyframes blink{50%{opacity:0}} .colon.blink{animation:blink .6s steps(1) infinite}
+
+    @media (max-width:720px){
+      .time .digits{font-size:clamp(4rem, 26vw, 8rem)}
+      #three-container{width:200px;height:200px}
     }
   </style>
 </head>
 <body>
-  <canvas id="bg"></canvas>
-  <div class="wrap">
-    <div class="panel" role="main">
-      <header>
-        <div class="title">
-          <div class="logo">⧖</div>
-          <h1>Serene 3D Clock</h1>
-        </div>
-        <div class="controls">
-          <button id="mode-toggle" class="btn" aria-pressed="false" title="Toggle theme">🌞 / 🌙</button>
-          <button id="pause-rotate" class="btn" title="Pause rotation">⏸</button>
-        </div>
-      </header>
+  <button id="mode-toggle" class="theme-toggle" aria-pressed="false" title="Toggle theme">🌙</button>
 
-      <div class="stage">
-        <div id="three-container"></div>
-        <div class="info">
-          <div id="time" class="clock-digital"><span class="time-h">00</span><span class="colon blink">:</span><span class="time-m">00</span><span class="colon blink">:</span><span class="time-s">00</span></div>
-          <div id="date" class="clock-date">Loading date…</div>
-          <div style="height:18px"></div>
-          <div class="small">A calm animated 3D orb reflects time and adds a soft, meditative presence. Use the theme toggle to switch between dark and light modes. The theme is saved locally.</div>
-        </div>
+  <main class="wrap">
+    <section class="clock-card" role="main">
+      <div class="time" aria-live="polite">
+        <span class="digits" id="time-display">00:00</span>
+        <span class="seconds" id="sec-display">00</span>
       </div>
-    </div>
-  </div>
+      <div id="date" class="date">Loading…</div>
+      <div id="three-container" aria-hidden="true"></div>
+    </section>
+  </main>
 
   <script src="https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.min.js"></script>
   <script>
-    // Utilities
-    const $ = id => document.getElementById(id);
-    const ls = { get:(k,d)=>{try{return JSON.parse(localStorage.getItem(k))}catch(e){return d}}, set:(k,v)=>localStorage.setItem(k,JSON.stringify(v)) };
+    // --- Theme (only Dark / Light as requested) ---
+    const themeKey = 'focusClockTheme';
+    const stored = localStorage.getItem(themeKey) || 'dark';
+    document.documentElement.setAttribute('data-theme', stored);
+    const modeBtn = document.getElementById('mode-toggle');
+    function updateModeIcon(){ modeBtn.textContent = document.documentElement.getAttribute('data-theme')==='dark' ? '🌙' : '🌞'; }
+    modeBtn.addEventListener('click', ()=>{ const t = document.documentElement.getAttribute('data-theme')==='dark' ? 'light' : 'dark'; document.documentElement.setAttribute('data-theme', t); localStorage.setItem(themeKey, t); updateModeIcon(); });
+    updateModeIcon();
 
-    // Theme
-    const savedTheme = ls.get('sereneClockTheme','dark') || 'dark';
-    document.documentElement.setAttribute('data-theme', savedTheme);
-    const modeToggle = $('mode-toggle');
-    function updateModeButton(){ modeToggle.textContent = document.documentElement.getAttribute('data-theme')==='dark' ? '🌙' : '🌞'; }
-    modeToggle.addEventListener('click', ()=>{ const t = document.documentElement.getAttribute('data-theme')==='dark'?'light':'dark'; document.documentElement.setAttribute('data-theme',t); ls.set('sereneClockTheme',t); updateModeButton(); });
-    updateModeButton();
+    // --- Time rendering (large digits + small date) ---
+    const timeDisplay = document.getElementById('time-display');
+    const secDisplay = document.getElementById('sec-display');
+    const dateEl = document.getElementById('date');
 
-    // Background gentle particles (canvas)
-    (function bgParticles(){
-      const c = document.getElementById('bg'); const ctx = c.getContext('2d'); let W,H; function resize(){W=c.width=innerWidth;H=c.height=innerHeight} resize(); addEventListener('resize',resize);
-      const dots=[]; for(let i=0;i<120;i++){dots.push({x:Math.random()*W,y:Math.random()*H,r:1+Math.random()*2, vx:(Math.random()-0.5)*0.15, vy:(Math.random()-0.5)*0.15})}
-      function frame(){ctx.clearRect(0,0,W,H); const grad=ctx.createLinearGradient(0,0,W,H); if(document.documentElement.getAttribute('data-theme')==='dark'){grad.addColorStop(0,'rgba(30,45,40,0.05)');grad.addColorStop(1,'rgba(10,18,20,0.06)')}else{grad.addColorStop(0,'rgba(250,250,255,0.06)');grad.addColorStop(1,'rgba(230,245,255,0.04)');} ctx.fillStyle=grad; ctx.fillRect(0,0,W,H);
-        for(const d of dots){ d.x+=d.vx; d.y+=d.vy; if(d.x<-10)d.x=W+10; if(d.x>W+10)d.x=-10; if(d.y<-10)d.y=H+10; if(d.y>H+10)d.y=-10; ctx.beginPath(); ctx.arc(d.x,d.y,d.r,0,Math.PI*2); ctx.fillStyle='rgba(255,255,255,0.03)'; ctx.fill(); }
-        requestAnimationFrame(frame);
-      }
-      frame();
-    })();
+    function pad(n){ return String(n).padStart(2,'0'); }
+    function tick(){
+      const now = new Date();
+      const h = pad(now.getHours());
+      const m = pad(now.getMinutes());
+      const s = pad(now.getSeconds());
+      timeDisplay.textContent = `${h}:${m}`;
+      secDisplay.textContent = s;
+      dateEl.textContent = now.toLocaleDateString(undefined,{weekday:'long', month:'long', day:'numeric'});
+    }
+    // align to second boundary
+    (function startClock(){ tick(); const delay = 1000 - (Date.now() % 1000); setTimeout(()=>{ tick(); setInterval(tick, 1000); }, delay); })();
 
-    // THREE.js scene: peaceful orb
-    (function threeClock(){
-      const container = $('three-container');
+    // --- Optimized 3D scene (small, punchy, performant) ---
+    (function init3(){
+      const container = document.getElementById('three-container');
+      if(!container) return;
+
       const scene = new THREE.Scene();
-      const renderer = new THREE.WebGLRenderer({antialias:true,alpha:true});
-      renderer.setPixelRatio(window.devicePixelRatio); renderer.setSize(container.clientWidth, container.clientHeight); container.appendChild(renderer.domElement);
-      const cam = new THREE.PerspectiveCamera(50, container.clientWidth/container.clientHeight, 0.1, 100); cam.position.set(0,0,3);
+      const sizes = ()=>({w: container.clientWidth, h: container.clientHeight});
+      const {w,h} = sizes();
+      const renderer = new THREE.WebGLRenderer({antialias:true, alpha:true});
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.6));
+      renderer.setSize(w,h); renderer.setClearColor(0x000000, 0);
+      container.appendChild(renderer.domElement);
+
+      const camera = new THREE.PerspectiveCamera(45, w/h, 0.1, 100);
+      camera.position.set(0,0,3.2);
+      scene.add(camera);
 
       // lights
       const amb = new THREE.AmbientLight(0xffffff, 0.6); scene.add(amb);
-      const p1 = new THREE.PointLight(0x66e5c9, 1.2, 10); p1.position.set(3,2,3); scene.add(p1);
-      const p2 = new THREE.PointLight(0x2b7cff, 0.6, 10); p2.position.set(-3,-2,2); scene.add(p2);
+      const p = new THREE.PointLight(0xffffff, 1.2, 10); p.position.set(2,2,2); scene.add(p);
 
-      // orb
-      const sphereGeo = new THREE.SphereGeometry(0.95, 128, 128);
-      const mat = new THREE.MeshStandardMaterial({color:0x66e5c9, roughness:0.35, metalness:0.25, emissive:0x07231a, emissiveIntensity:0.5});
-      const orb = new THREE.Mesh(sphereGeo, mat); scene.add(orb);
+      // geometry detail tuned by width for perf
+      function detailForWidth(){ const W = window.innerWidth; if(W>1600) return 4; if(W>1100) return 3; if(W>700) return 2; return 1; }
 
-      // soft glow layer
-      const glowMat = new THREE.MeshBasicMaterial({color:0x66e5c9, transparent:true, opacity:0.06, blending:THREE.AdditiveBlending});
-      const glow = new THREE.Mesh(new THREE.SphereGeometry(1.08,64,64), glowMat); scene.add(glow);
+      let detail = detailForWidth();
+      let geo = new THREE.IcosahedronGeometry(1, detail);
 
-      // subtle bump/normal map via noise (vertex displacement)
-      // create a low-amplitude vertex wiggle in render loop instead of complex shaders
+      const mat = new THREE.MeshStandardMaterial({color: 0x10b981, emissive: 0x053728, roughness: 0.18, metalness: 0.55});
+      const mesh = new THREE.Mesh(geo, mat); scene.add(mesh);
 
-      let rotate = true;
-      $('pause-rotate').addEventListener('click', ()=>{ rotate = !rotate; $('pause-rotate').textContent = rotate ? '⏸' : '▶'; });
+      // additive glow layer
+      const glowMat = new THREE.MeshBasicMaterial({color:0x10b981, transparent:true, opacity:0.12, blending:THREE.AdditiveBlending});
+      const glow = new THREE.Mesh(geo.clone(), glowMat); glow.scale.set(1.12,1.12,1.12); scene.add(glow);
 
-      function onResize(){ renderer.setSize(container.clientWidth, container.clientHeight); cam.aspect = container.clientWidth/container.clientHeight; cam.updateProjectionMatrix(); }
+      // small ring for punch
+      const ringGeo = new THREE.TorusGeometry(1.35, 0.04, 20, 80);
+      const ringMat = new THREE.MeshBasicMaterial({color:0x20c787, transparent:true, opacity:0.06});
+      const ring = new THREE.Mesh(ringGeo, ringMat); ring.rotation.x = Math.PI * 0.35; scene.add(ring);
+
+      // handle resize
+      function onResize(){ const {w,h} = sizes(); renderer.setSize(w,h); camera.aspect = w/h; camera.updateProjectionMatrix(); }
       window.addEventListener('resize', onResize);
 
+      // pause rendering when tab not visible
+      let running = true;
+      document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) { if(!running){ running = true; animate(); } } else { running = false; } });
+
       const clock = new THREE.Clock();
-      function render(){ requestAnimationFrame(render); const t = clock.getElapsedTime(); if(rotate){ orb.rotation.y += 0.0035; orb.rotation.x = Math.sin(t*0.3)*0.04; glow.rotation.copy(orb.rotation); }
-        // small vertex shimmer
-        const pos = sphereGeo.attributes.position; for(let i=0;i<pos.count;i++){ const ox = pos.getX(i), oy = pos.getY(i), oz = pos.getZ(i); const n = 1 + 0.002*Math.sin(i*0.1 + t*2.0); pos.setXYZ(i, ox*n, oy*n, oz*n); } pos.needsUpdate = true;
-        renderer.render(scene, cam);
-      }
-      render();
+      function animate(){ if(!running) return; requestAnimationFrame(animate); const t = clock.getElapsedTime();
+        // rotation + soft pulse tied to time
+        mesh.rotation.y += 0.008; mesh.rotation.x = Math.sin(t*0.25)*0.06;
+        const pulse = 1 + Math.sin(t*2.0) * 0.03;
+        mesh.scale.setScalar(pulse);
+        glow.scale.setScalar(1.12 + Math.sin(t*2.8)*0.02);
+        ring.rotation.z += 0.005 + Math.sin(t*0.6)*0.002;
 
-      // theme sync: adjust material & lights
-      function applyTheme(t){
-        if(t==='light'){
-          mat.color.set(0x10b981);
-          mat.emissive.set(0x0b2e24);
-          mat.emissiveIntensity=0.12;
-          p1.color.set(0x10b981);
-          p2.color.set(0x34d399);
-          amb.intensity=0.9;
-        } else {
-          mat.color.set(0x10b981);
-          mat.emissive.set(0x07231a);
-          mat.emissiveIntensity=0.5;
-          p1.color.set(0x34d399);
-          p2.color.set(0x10b981);
-          amb.intensity=0.6;
-        }
-      }
-      applyTheme(document.documentElement.getAttribute('data-theme'));
-      const observer = new MutationObserver(()=>applyTheme(document.documentElement.getAttribute('data-theme')));
-      observer.observe(document.documentElement, {attributes:true, attributeFilter:['data-theme']});
-    })();
+        // moving light
+        p.position.x = Math.cos(t*0.8)*2.2; p.position.y = Math.sin(t*0.9)*1.6; p.position.z = Math.sin(t*0.7)*1.8;
 
-    // digital clock update
-    (function digital(){
-      const TIME = $('time'), DATE = $('date');
-      function pad(n){return String(n).padStart(2,'0')}
-      function tick(){
-        const now = new Date();
-        const h = pad(now.getHours());
-        const m = pad(now.getMinutes());
-        const s = pad(now.getSeconds());
-        // render with blinking colon (CSS-driven)
-        TIME.innerHTML = `<span class="time-h">${h}</span><span class="colon blink">:</span><span class="time-m">${m}</span><span class="colon blink">:</span><span class="time-s">${s}</span>`;
-        DATE.textContent = now.toLocaleDateString(undefined,{weekday:'long', month:'long', day:'numeric'});
+        renderer.render(scene, camera);
       }
-      tick(); setInterval(tick, 250);
+
+      // re-create geometry if detail threshold changes on resize
+      let lastDetail = detail;
+      setInterval(()=>{ const d = detailForWidth(); if(d !== lastDetail){ lastDetail = d; const pos = mesh.position.clone(); scene.remove(mesh); scene.remove(glow); geo.dispose(); geo = new THREE.IcosahedronGeometry(1, d); mesh.geometry = geo; glow.geometry = geo.clone(); scene.add(mesh); scene.add(glow); } }, 1200);
+
+      animate();
     })();
   </script>
 </body>
